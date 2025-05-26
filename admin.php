@@ -7,7 +7,7 @@ $sql_get_duration = "SELECT setting_value FROM settings WHERE setting_key = 'qui
 $result_duration = $conn->query($sql_get_duration);
 if ($result_duration && $result_duration->num_rows > 0) { $row_duration = $result_duration->fetch_assoc(); $current_duration_seconds = intval($row_duration['setting_value']); }
 $current_duration_minutes = $current_duration_seconds / 60;
-$sql = "SELECT id, question_text, correct_answer FROM questions ORDER BY id DESC";
+$sql = "SELECT id, question_text, correct_answer FROM questions ORDER BY id ASC";
 $result = $conn->query($sql);
 ?>
 <!DOCTYPE html>
