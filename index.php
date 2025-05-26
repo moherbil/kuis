@@ -20,14 +20,17 @@ $player_display_name = $is_player_logged_in ? htmlspecialchars($_SESSION['player
         .options label:hover { background-color: #d8dfe5; }
         .options label.selected { background-color: #cce5ff; border-color: #b8daff; }
         input[type="radio"] { margin-right: 15px; transform: scale(1.2); }
-        button { display: block; width: 100%; padding: 15px; background: linear-gradient(90deg, #28a745, #218838); color: white; border: none; border-radius: 8px; font-size: 1.2em; font-weight: bold; cursor: pointer; margin-top: 30px; transition: transform 0.2s, box-shadow 0.2s, background 0.3s; box-shadow: 0 4px 8px rgba(40, 167, 69, 0.3); }
-        button:hover { transform: translateY(-2px); box-shadow: 0 6px 12px rgba(40, 167, 69, 0.4); }
+        button, .btn { display: inline-block; /* Ubah ke inline-block agar bisa sebelahan jika perlu */ width: auto; /* Ubah agar tidak full-width */ padding: 15px 30px; /* Sesuaikan padding */ background: linear-gradient(90deg, #28a745, #218838); color: white; border: none; border-radius: 8px; font-size: 1.2em; font-weight: bold; cursor: pointer; margin-top: 10px; /* Kurangi margin atas */ margin-right: 10px; /* Tambah margin kanan */ transition: transform 0.2s, box-shadow 0.2s, background 0.3s; box-shadow: 0 4px 8px rgba(40, 167, 69, 0.3); text-decoration: none; /* Untuk link */ text-align: center; }
+        button:hover, .btn:hover { transform: translateY(-2px); box-shadow: 0 6px 12px rgba(40, 167, 69, 0.4); color: white; }
         button:disabled { background: #aaa; cursor: not-allowed; transform: none; box-shadow: none; }
-        .start-button, .restart-button { background: linear-gradient(90deg, #007bff, #0056b3); box-shadow: 0 4px 8px rgba(0, 123, 255, 0.3); }
-        .start-button:hover, .restart-button:hover { background: linear-gradient(90deg, #0069d9, #004a99); }
+        .start-button, .restart-button, .btn-primary { background: linear-gradient(90deg, #007bff, #0056b3); box-shadow: 0 4px 8px rgba(0, 123, 255, 0.3); }
+        .start-button:hover, .restart-button:hover, .btn-primary:hover { background: linear-gradient(90deg, #0069d9, #004a99); }
+        .btn-secondary { background: linear-gradient(90deg, #6c757d, #5a6268); box-shadow: 0 4px 8px rgba(108, 117, 125, 0.3); }
+        .btn-secondary:hover { background: linear-gradient(90deg, #5a6268, #4e555b); }
         .result { text-align: center; font-size: 1.6em; font-weight: bold; margin-bottom: 20px; }
-        .no-questions, .loading, .error-msg { text-align: center; color: #dc3545; font-weight: bold; font-size: 1.1em; }
+        .no-questions, .loading, .error-msg, .login-required { text-align: center; color: #dc3545; font-weight: bold; font-size: 1.1em; }
         .loading { color: #555; }
+        .login-required { color: #0056b3; } /* Ubah warna pesan login */
         .timer { position: fixed; top: 20px; right: 20px; background-color: #dc3545; color: white; padding: 10px 20px; border-radius: 25px; font-size: 1.2em; font-weight: bold; box-shadow: 0 2px 8px rgba(0,0,0,0.25); z-index: 1000; transition: all 0.5s; opacity: 0; transform: translateY(-20px); }
         .timer.show { opacity: 1; transform: translateY(0); }
         .timer.low-time { background-color: #ffc107; color: black; animation: pulse 1s infinite; }
@@ -46,7 +49,7 @@ $player_display_name = $is_player_logged_in ? htmlspecialchars($_SESSION['player
     <div id="timer" class="timer">--:--</div>
     <div class="quiz-container" id="quiz-container">
         <h1>Kuis Interaktif PHP + AJAX</h1>
-        <p>Selamat datang! Kuis akan dimuat tanpa refresh halaman.</p>
+        <p>Selamat datang! <?php echo $is_player_logged_in ? 'Kuis akan dimuat tanpa refresh halaman.' : 'Login untuk memulai kuis dan menyimpan skor Anda.'; ?></p>
         <button id="start-button" class="start-button">Mulai Kuis!</button>
     </div>
 
@@ -112,7 +115,8 @@ $player_display_name = $is_player_logged_in ? htmlspecialchars($_SESSION['player
                     <button id="restart-button" class="restart-button">Ulangi Kuis</button>
                 </div>`;
             quizContainer.innerHTML = resultHTML;
-            document.getElementById('restart-button').addEventListener('click', startQuiz);
+            // Pastikan tombol restart juga memeriksa login
+            document.getElementById('restart-button').addEventListener('click', handleStartClick);
         } else {
             timerElement.classList.add('show');
             let questionHTML = `
@@ -129,7 +133,7 @@ $player_display_name = $is_player_logged_in ? htmlspecialchars($_SESSION['player
                                     </label>
                                 `).join('')}
                             </div>
-                            <button id="submit-button" type="submit">Jawab & Lanjut</button>
+                            <button id="submit-button" type="submit" style="width:100%;">Jawab & Lanjut</button>
                         </form>
                     </div>
                 </div>`;
@@ -182,7 +186,33 @@ $player_display_name = $is_player_logged_in ? htmlspecialchars($_SESSION['player
         }
     }
 
-    document.getElementById('start-button').addEventListener('click', startQuiz);
+    // --- PERUBAHAN UTAMA DI SINI ---
+    function showLoginPrompt() {
+        quizContainer.innerHTML = `
+            <h2 class="login-required">Login Diperlukan</h2>
+            <p>Anda harus login terlebih dahulu untuk memulai kuis dan menyimpan skor Anda.</p>
+            <a href="login_player.php" class="btn btn-primary">Login Sekarang</a>
+            <a href="register.php" class="btn btn-secondary">Daftar Akun</a>
+        `;
+        timerElement.classList.remove('show');
+        clearInterval(countdownInterval);
+    }
+
+    function handleStartClick() {
+        if (isPlayerLoggedIn) {
+            startQuiz(); // Jika login, mulai kuis
+        } else {
+            showLoginPrompt(); // Jika tidak, tampilkan pesan login
+        }
+    }
+
+    // Tambahkan event listener ke tombol start
+    const startButton = document.getElementById('start-button');
+    if (startButton) {
+        startButton.addEventListener('click', handleStartClick);
+    }
+    // --- AKHIR PERUBAHAN ---
+
     updatePlayerStatusDisplay(); // Panggil saat halaman dimuat
 </script>
 </body>
